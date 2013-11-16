@@ -98,8 +98,10 @@ for mysection in mysections:
 		mounts_file= open('/proc/mounts')
 		mounts = mounts_file.read()
 		myre = r"(\S+) "+target_mountpoint
+		if options.verbose:
+			print "Checking /proc/mounts for",myre
 		my_device = re.search(myre,mounts).group(1)
-		blkid_out = subprocess.check_output(["/sbin/blkid","/dev/sdc3"])
+		blkid_out = subprocess.check_output(["/sbin/blkid",my_device])
 		uuid = re.search(r"UUID=\"(.*?)\"",blkid_out).group(1)
 	except:
 		print "Could not determine of the correct medium is mounted at target_path="+target_path
@@ -166,7 +168,7 @@ for mysection in mysections:
 	# check which snapshots are present on the source drive
 	source_snaps_raw = subprocess.check_output(["btrfs","subvolume","list","-s","-u",source_mountpoint])
 	source_snaps = parse_btrfs_subvolume_list(source_snaps_raw)
-	source_snaps = filter(lambda x: not x.path.find(source_path),source_snaps)
+	source_snaps = filter(lambda x: not x.path.find(source_path+"/"),source_snaps)
 	if options.verbose:
 		print "Found snapshots in source_path:"
 		for i in source_snaps:
@@ -175,7 +177,7 @@ for mysection in mysections:
 	# check which snapshots are present on the target drive
 	target_snaps_raw = subprocess.check_output(["btrfs","subvolume","list","-a","-u",target_mountpoint])
 	target_snaps = parse_btrfs_subvolume_list(target_snaps_raw)
-	target_snaps = filter(lambda x: not x.path.find(target_path),target_snaps)
+	target_snaps = filter(lambda x: not x.path.find(target_path+"/"),target_snaps)
 	for snap in target_snaps:
 		snap.source_uuid = get_source_uuid_tag(snap.path)
 	if options.verbose:
@@ -194,9 +196,11 @@ for mysection in mysections:
 		for other_snap in target_snaps:
 			if snap.snapper_id == other_snap.snapper_id:
 				if snap.uuid!=other_snap.source_uuid:
-					print "Warning: snapshot uuid of a snapshot present on both drives do not match:"
+					print "Error: snapshot uuid of a snapshot present on both drives do not match:"
 					print source_mountpoint+"/"+snap.path+":"+snap.uuid
 					print target_mountpoint+"/"+other_snap.path+":"+str(other_snap.source_uuid)
+					error = -1
+					quit(-1) # TODO: propper error handling
 				common_snaps.append(snap)
 				is_common = True
 				break
