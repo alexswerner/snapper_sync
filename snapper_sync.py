@@ -34,16 +34,10 @@
 #   and target drives at each run.
 # * You need to be root, because it involves btrfs send/receive
 # * This script depends on the folder structure created by snapper
-# * You need to configure your source drive below - at least for now
 
 # TODO:
-# * more safeguards - too many things can happen now
 # * backup over the network, involving intermediate files and scp
 # * get the snapshot list from snapper instead of btrfs -> use python bindings of snapper
-# * check what happens when a snapshot was modified on the target drive
-# * mark new snapshot on the target drive to set up a safe mapping
-#   of source snapshot -> target snapshot ( file in target_partition/snapper_id/source_snapshot
-#   which contains the uuid of the source_snapshot
 # * check what happens when this is interrupted by a power loss/ target disk removal?
 # * purge snapshots with a similar mechanism to snapper
 # * check if this could be integrated into snapper - one daemon which does snapshots and 
@@ -74,7 +68,7 @@ except:
 	print "Could not parse config file"
 	quit(-1)
 
-# FIXME: process multiple section
+# process multiple sections / .snapshots directories
 if not options.config:
 	mysections = config.sections()
 else:
@@ -99,8 +93,7 @@ for mysection in mysections:
 		print "target_uuid=",target_uuid
 		print "target_min_space=",target_min_space
 
-	# check if correct backup storage is attached & mounted
-	# use disk uuid for this when possible to prevent detecting the wrong drive
+	# check if correct backup storage is attached & mounted using the given uuid
 	try:
 		mounts_file= open('/proc/mounts')
 		mounts = mounts_file.read()
@@ -178,8 +171,6 @@ for mysection in mysections:
 		print "Found snapshots in source_path:"
 		for i in source_snaps:
 			print i.path,"/",i.snapper_id
-	#on the source partition it can be checked if the snapshots have the correct parent uuid
-	#which is the uuid of the source partition?
 
 	# check which snapshots are present on the target drive
 	target_snaps_raw = subprocess.check_output(["btrfs","subvolume","list","-a","-u",target_mountpoint])
@@ -218,12 +209,11 @@ for mysection in mysections:
 		print [ snap.snapper_id for snap in common_snaps ]
 		print "Snapshots to be transfered:"
 		print [ snap.snapper_id for snap in source_only_snaps ]
-	# the chain of incremental snapshots on the target partitions can be reconstructed
-	# but a connection to the source partition is unclear, but one could use a custom name
-	# probably the snapper snapshot ids can be used.
 
 	# use btrfs send/receive to transfer the new snapshot(s) to the target drive
-	# specifing all existing snapshots as clone sources, if multiple snapshots to transfer, extend list of clone-source after each transfer
+	# TODO: specifing all existing snapshots as clone sources, if multiple snapshots 
+	#       to transfer, extend list of clone-source after each transfer
+	#       DOES NOT WORK YET - strange error message
 
 	for snap in source_only_snaps:
 		if options.verbose:
@@ -251,8 +241,10 @@ for mysection in mysections:
 			tag_file = open(new_folder+"/info.xml","w")
 			tag_file.write(etree.tostring(xml,pretty_print=True,xml_declaration=True))
 		clone_cmdline = ""
+		#using multiple clone sources
 		#for clone in common_snaps:
 		#	clone_cmdline = clone_cmdline + "-c " + source_mountpoint + "/" + source_path + "/" + str(clone) + "/snapshot "
+		#using a single parent snapshot
 		previous_snap = -1
 		for clone in common_snaps:
 			if clone.snapper_id < snap.snapper_id and clone.snapper_id > previous_snap:
