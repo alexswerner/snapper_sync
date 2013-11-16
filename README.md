@@ -6,9 +6,7 @@ be efficiently transfered with "btrfs send -p $other_snapshot ..".
 
 * The script has to be executed as root to create new snapshots
 * A sample configuration is supplied in the file backup.cfg
-* Some integrity checks are implemented
-** required free disk space
-** correct backup medium mounted
+* Some integrity checks are implemented (required free disk space, correct backup medium mounted)
 
 ### Usage 
 $> snapper_sync.py backup.cfg
