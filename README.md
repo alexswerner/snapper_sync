@@ -10,7 +10,7 @@ be efficiently transfered with "btrfs send -p $other_snapshot ..".
 ** required free disk space
 ** correct backup medium mounted
 
-== Usage ==
+### Usage 
 $> snapper_sync.py backup.cfg
 
 Options:
