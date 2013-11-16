@@ -79,6 +79,7 @@ if not options.config:
 	mysections = config.sections()
 else:
 	mysections = [ options.config ]
+error = 0
 for mysection in mysections:
 	if options.verbose:
 		print "Processing config",mysection
@@ -109,10 +110,12 @@ for mysection in mysections:
 		uuid = re.search(r"UUID=\"(.*?)\"",blkid_out).group(1)
 	except:
 		print "Could not determine of the correct medium is mounted at target_path="+target_path
-		quit(-1)
+		error = -1
+		continue
 	if uuid!=target_uuid:
 		print "Wrong medium is mounted at target_path="+target_path
-		quit(-1)
+		error = -1
+		continue
 
 	# check if there is enough space on the target disk
 	try:
@@ -125,7 +128,8 @@ for mysection in mysections:
 			print "Free space on target disk", freespace_m
 		if freespace_m < float(target_min_space):
 			print "Not enough spaced left on target disk (target_min_space)"
-			quit(-1)
+			error = -1
+			continue
 	except:
 		print "Could not determine free space on target disk"
 
@@ -231,7 +235,8 @@ for mysection in mysections:
 			retval = subprocess.call("mkdir "+new_folder,shell=True)
 			if retval != 0:
 				print "New folder",new_folder, " could not be created"
-				quit(-1)
+				error = -1
+				continue
 		if options.verbose:
 			print "Saving source uuid to info.xml"
 		if not options.dry_run:
@@ -265,9 +270,10 @@ for mysection in mysections:
 			retval = subprocess.call(cmdline,shell=True)
 			if retval != 0:
 				print "Problem detected"
-				quit(-1)
+				error = -1
+				continue
 		common_snaps.append(snap)
 	# use kernel io priorities or something like that to prevent locking up the system
 	# or block the external drive
 
-
+quit(error)
